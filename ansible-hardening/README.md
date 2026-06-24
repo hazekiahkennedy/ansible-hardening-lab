@@ -1,221 +1,175 @@
-# 🌐 Lab 01: Hosting Your First Static Website in Azure
+# Ansible Security Hardening Lab
 
-**Author:** Hazekiah Kennedy-Wilson  
-**Estimated Time:** 30 Minutes  
-**Difficulty:** Beginner  
-
----
-
-## 📌 Lab Overview
-
-In this lab, you will deploy your **first public-facing website in Microsoft Azure** using **Azure Blob Storage Static Website Hosting**.
-
-Instead of managing servers, you will use a **Platform as a Service (PaaS)** approach—where Azure handles the infrastructure and you focus on your content.
+**Lab #:** Project 8  
+**Platform:** Microsoft Azure  
+**Tools:** Terraform, Ansible, Ansible Vault, UFW, fail2ban, Ubuntu 22.04  
+**Author:** Hazekiah Kennedy
 
 ---
 
-## 🎯 Objective
+## What This Does
 
-By completing this lab, you will:
-
-- Deploy a static website using Azure Storage
-- Understand **PaaS** and **serverless hosting**
-- Upload and manage web content in Azure
-- Access your site via a public URL
+Provisions a two-VM Linux fleet in Azure using Terraform, then applies an automated, idempotent security baseline across the entire fleet using Ansible. Every newly provisioned server gets locked down identically — SSH hardening, host firewall, intrusion prevention, automatic security patching, and a login banner — in a single playbook run. The second run makes zero changes, proving configuration drift is eliminated.
 
 ---
 
-## 🧱 Architecture Diagram
+## Architecture
 
 ```
-+-------------+
-| User |
-| (Internet) |
-+------+------+
-|
-v
-+-----------------------------+
-| Public Endpoint URL |
-| *.web.core.windows.net |
-+-------------+---------------+
-|
-v
-+-----------------------------+
-| Azure Storage Account |
-| $web Container |
-| index.html |
-+-----------------------------+
+Terraform (Provision)
+    └── Resource Group
+    └── Virtual Network + Subnet
+    └── Network Security Group (SSH locked to your IP, ports 80/443 open)
+    └── 2x Ubuntu 22.04 VMs (Standard_D2s_v3 — westus2)
+    └── Auto-generated inventory.ini → passed to Ansible
+
+Ansible (Harden)
+    └── site.yml → roles/hardening
+            ├── apt update + security upgrades
+            ├── Install ufw, fail2ban, unattended-upgrades
+            ├── Admin password set from encrypted Vault
+            ├── UFW firewall enabled (default-deny, allow 22/80/443)
+            ├── SSH drop-in config (no root, no passwords, MaxAuthTries 3)
+            ├── SSH config validated before restart (no lockout risk)
+            ├── Login banner deployed
+            ├── fail2ban configured (ban 1hr after 5 failures)
+            └── Automatic security updates enabled
 ```
 
 ---
 
-## 📋 Prerequisites
+## Resources Deployed
 
-- [ ] Active Azure Subscription (Free Tier is fine)
-- [ ] Basic text editor (VS Code, Notepad, etc.)
-
----
-
-## 🏷️ Lab Variables (Naming Convention)
-
-Use consistent naming:
-
-- **Resource Group:**
-```
-rg-lab01-[yourname]
-```
-Example: rg-lab01-hazekiah
-
-- **Location:**
-```
-East US
-```
-
-- **Storage Account Name:**
-```
-staticweblab01[yourname]
-```
-Example: staticweblab01hazekiah
-
-> ⚠️ Important Rules:
-> - Must be globally unique
-> - Lowercase only
-> - No special characters
+| Resource | Name |
+|---|---|
+| Resource Group | rg-ansible-hardening-hazekiah |
+| Virtual Network | vnet-hardening-hazekiah |
+| Subnet | subnet-hardening |
+| Network Security Group | nsg-hardening-hazekiah |
+| Public IP (x2) | pip-web-1-hazekiah, pip-web-2-hazekiah |
+| Network Interface (x2) | nic-web-1-hazekiah, nic-web-2-hazekiah |
+| Linux VM (x2) | web-1-hazekiah, web-2-hazekiah |
 
 ---
 
-## 🚀 Step-by-Step Instructions
-
----
-
-## Phase 1: Create the Resource Group
-
-1. Go to Azure Portal: https://portal.azure.com  
-2. Search Resource groups  
-3. Click + Create  
-
-### Basics Tab:
-- Subscription: Select your subscription  
-- Resource Group:
-```
-rg-lab01-[yourname]
-```
-- Region: East US  
-
-Click: Review + create → Create  
-
----
-
-## Phase 2: Create the Storage Account
-
-1. Search Storage accounts  
-2. Click + Create  
-
-### Basics Tab:
-- Resource Group: Select your RG  
-- Storage account name:
-```
-staticweblab01[yourname]
-```
-- Region: East US  
-- Performance: Standard  
-- Redundancy: Locally-redundant storage (LRS)  
-
-Click: Review + create → Create  
-
-Deployment takes ~30 seconds  
-Click Go to resource when complete  
-
----
-
-## Phase 3: Enable Static Website Hosting
-
-1. In your Storage Account, go to:
-```
-Data management → Static website
-```
-
-2. Set:
-- Static website: Enabled  
-- Index document name: index.html  
-- Error document path: 404.html (optional)  
-
-3. Click Save  
-
-Copy the Primary endpoint URL  
-
----
-
-## Phase 4: Create Your Website File
-
-Open your text editor and paste:
-
-```html
-<!DOCTYPE html>
-<html>
-<head>
-    <title>My First Cloud Site</title>
-    <style>
-        body { font-family: sans-serif; text-align: center; margin-top: 50px; background-color: #f0f0f0; }
-        h1 { color: #0078d4; }
-    </style>
-</head>
-<body>
-    <h1>Hello from the Cloud!</h1>
-    <p>This site is hosted on Azure Blob Storage.</p>
-    <p>Deployed by: [Your Name]</p>
-</body>
-</html>
-```
-
-Save as:
+## Project Structure
 
 ```
-index.html
+ansible-hardening-lab/
+├── terraform/
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── outputs.tf
+│   └── terraform.tfvars
+└── ansible-hardening/
+    ├── ansible.cfg
+    ├── inventory.ini           ← auto-generated by Terraform
+    ├── site.yml
+    ├── group_vars/
+    │   └── all.yml
+    ├── vault.yml               ← encrypted with Ansible Vault (AES256)
+    ├── images/
+    └── roles/hardening/
+        ├── defaults/main.yml
+        ├── handlers/main.yml
+        ├── tasks/main.yml
+        └── templates/
+            ├── 00-hardening.conf.j2
+            ├── issue.net.j2
+            └── jail.local.j2
 ```
 
 ---
 
-## Phase 5: Upload Content
+## How to Run
 
-Go back to Azure Portal  
+### Prerequisites
+- WSL2 with Ubuntu
+- Terraform installed in WSL
+- Azure CLI installed in WSL
+- Ansible installed in WSL (`sudo apt install -y ansible`)
+- community.general collection (`ansible-galaxy collection install community.general`)
+- SSH key pair generated (`ssh-keygen -t ed25519 -f ~/.ssh/ansible_lab -N ""`)
 
-Navigate to:
-```
-Data storage → Containers
-```
-
-Open:
-```
-$web
+### 1. Provision the Fleet
+```bash
+cd terraform
+export ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+terraform init
+terraform apply
 ```
 
-Upload your index.html file  
+### 2. Confirm Inventory Was Generated
+```bash
+cat ../ansible-hardening/inventory.ini
+```
+
+### 3. Test Connectivity
+```bash
+cd ../ansible-hardening
+ansible all -m ping
+```
+
+### 4. Run the Hardening Playbook
+```bash
+ansible-playbook site.yml -e @vault.yml --ask-vault-pass
+```
+
+### 5. Prove Idempotency
+```bash
+ansible-playbook site.yml -e @vault.yml --ask-vault-pass
+```
+Second run shows `changed=0` on all configuration tasks.
+
+### 6. Teardown
+```bash
+cd ../terraform
+terraform destroy
+```
 
 ---
 
-## Phase 6: Validation
+## Verification
 
-Open your endpoint URL in a browser  
+After the first playbook run, SSH into either VM and confirm:
 
-You should see:
-Hello from the Cloud!  
-
----
-
-## 🛠️ Troubleshooting
-
-404 Error:
-- Make sure file is named index.html  
-- Ensure it is in the $web container  
-
-Storage name taken:
-- Add numbers to make it unique  
+```bash
+sudo ufw status                                    # Status: active, rules for 22/80/443
+sudo systemctl is-active fail2ban                  # active
+sudo sshd -T | grep permitrootlogin                # permitrootlogin no
+sudo sshd -T | grep passwordauthentication         # passwordauthentication no
+```
 
 ---
 
-## 🧹 Clean Up Resources
+## Screenshots
 
-Go to Resource Groups  
-Select your resource group  
-Delete it to avoid charges  
+### 01 — Vault Encrypted
+![Vault Encrypted](images/01-vault-encrypted.png)
+
+### 02 — Ansible Ping Success
+![Ansible Ping Success](images/02-ansible-ping-success.png)
+
+### 03 — First Playbook Run
+![First Playbook Run](images/03-first-playbook-run.png)
+
+### 04 — Second Playbook Run (Idempotency Proof)
+![Second Playbook Run](images/04-second-playbook-run.png)
+
+### 05 — SSH Login Banner
+![SSH Login Banner](images/05-ssh-login-banner.png)
+
+### 06 — UFW Firewall Status
+![UFW Status](images/06-ufw-status.png)
+
+### 07 — fail2ban Active
+![fail2ban Active](images/07-fail2ban-active.png)
+
+### 08 — SSH PermitRootLogin Disabled
+![PermitRootLogin](images/08-sshd-permitrootlogin.png)
+
+### 09 — SSH PasswordAuthentication Disabled
+![PasswordAuthentication](images/09-sshd-passwordauth.png)
+
+### 10 — GitHub Repo
+![GitHub Repo](images/10-github-repo.png)
