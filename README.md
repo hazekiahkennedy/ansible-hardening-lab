@@ -68,7 +68,7 @@ ansible-hardening-lab/
     ├── group_vars/
     │   └── all.yml
     ├── vault.yml               ← encrypted with Ansible Vault (AES256)
-    ├── images/
+    ├── ansible-hardening/images/
     └── roles/hardening/
         ├── defaults/main.yml
         ├── handlers/main.yml
@@ -145,31 +145,31 @@ sudo sshd -T | grep passwordauthentication         # passwordauthentication no
 ## Screenshots
 
 ### 01 — Vault Encrypted
-![Vault Encrypted](images/01-vault-encrypted.png)
+![Vault Encrypted](ansible-hardening/images/01-vault-encrypted.png)
 
 ### 02 — Ansible Ping Success
-![Ansible Ping Success](images/02-ansible-ping-success.png)
+![Ansible Ping Success](ansible-hardening/images/02-ansible-ping-success.png)
 
 ### 03 — First Playbook Run
-![First Playbook Run](images/03-first-playbook-run.png)
+![First Playbook Run](ansible-hardening/images/03-first-playbook-run.png)
 
 ### 04 — Second Playbook Run (Idempotency Proof)
-![Second Playbook Run](images/04-second-playbook-run.png)
+![Second Playbook Run](ansible-hardening/images/04-second-playbook-run.png)
 
 ### 05 — SSH Login Banner
-![SSH Login Banner](images/05-ssh-login-banner.png)
+![SSH Login Banner](ansible-hardening/images/05-ssh-login-banner.png)
 
 ### 06 — UFW Firewall Status
-![UFW Status](images/06-ufw-status.png)
+![UFW Status](ansible-hardening/images/06-ufw-status.png)
 
 ### 07 — fail2ban Active
-![fail2ban Active](images/07-fail2ban-active.png)
+![fail2ban Active](ansible-hardening/images/07-fail2ban-active.png)
 
 ### 08 — SSH PermitRootLogin Disabled
-![PermitRootLogin](images/08-sshd-permitrootlogin.png)
+![PermitRootLogin](ansible-hardening/images/08-sshd-permitrootlogin.png)
 
 ### 09 — SSH PasswordAuthentication Disabled
-![PasswordAuthentication](images/09-sshd-passwordauth.png)
+![PasswordAuthentication](ansible-hardening/images/09-sshd-passwordauth.png)
 
 ### 10 — GitHub Repo
-![GitHub Repo](images/10-github-repo.png)
+![GitHub Repo](ansible-hardening/images/10-github-repo.png)
